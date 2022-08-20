@@ -1,1 +1,319 @@
 
+<!DOCTYPE html>
+
+<html>
+
+  <head>
+
+    <title>Roraqual Build</title>
+
+    <meta charset="utf-8" />
+
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
+
+  </head>
+
+  <body>
+
+    <div class="container pt-3">
+
+<div class="row">
+
+ <button id="sign-in-or-out-button" class="btn btn-primary col-5"
+
+        style="margin-left: 25px">Sign In/Authorize</button>
+
+<button id="revoke-access-button" class="btn btn-secondary col-5"
+
+        style="display: none; margin-left: 25px">Revoke access</button>
+
+</div>
+
+<div id="auth-status" class="alert alert-warning mt-3" role="alert">
+
+  Authorize this app or sign in to view data
+
+</div>
+
+<div class="accordion mt-3 mb-3" id="accordion">
+
+  </div>
+
+    </div>
+
+<script>
+
+  var GoogleAuth;
+
+  const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+
+const CLIENT_ID = '983449012871-3e9uvvfo5te6fg70c5scp8e2ri871ne9.apps.googleusercontent.com';
+
+const API_KEY = 'AIzaSyDnFbx83PIB4Pi-pMyU5ibQXPotQBhjrhE';
+
+  //var SCOPE = 'https://www.googleapis.com/auth/drive.metadata.readonly';
+
+  function handleClientLoad() {
+
+    // Load the API's client and auth2 modules.
+
+    // Call the initClient function after the modules load.
+
+    gapi.load('client:auth2', initClient);
+
+  }
+
+  function initClient() {
+
+    // In practice, your app can retrieve one or more discovery documents.
+
+   // var discoveryUrl = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+
+const discoveryUrl = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
+
+    // Initialize the gapi.client object, which app uses to make API requests.
+
+    // Get API key and client ID from API Console.
+
+    // 'scope' field specifies space-delimited list of access scopes.
+
+    gapi.client.init({
+
+        'apiKey': API_KEY,
+
+        'clientId': CLIENT_ID,
+
+        'discoveryDocs': [discoveryUrl],
+
+        'scope': SCOPE
+
+    }).then(function () {
+
+      GoogleAuth = gapi.auth2.getAuthInstance();
+
+      // Listen for sign-in state changes.
+
+      GoogleAuth.isSignedIn.listen(updateSigninStatus);
+
+      // Handle initial sign-in state. (Determine if user is already signed in.)
+
+      var user = GoogleAuth.currentUser.get();
+
+      setSigninStatus();
+
+      // Call handleAuthClick function when user clicks on
+
+      //      "Sign In/Authorize" button.
+
+      $('#sign-in-or-out-button').click(function() {
+
+        handleAuthClick();
+
+      });
+
+      $('#revoke-access-button').click(function() {
+
+        revokeAccess();
+
+      });
+
+    });
+
+  }
+
+  function handleAuthClick() {
+
+    if (GoogleAuth.isSignedIn.get()) {
+
+      // User is authorized and has clicked "Sign out" button.
+
+      GoogleAuth.signOut();
+
+    } else {
+
+      // User is not signed in. Start Google auth flow.
+
+      GoogleAuth.signIn();
+
+    }
+
+  }
+
+  function revokeAccess() {
+
+    GoogleAuth.disconnect();
+
+  }
+
+  function setSigninStatus() {
+
+    var user = GoogleAuth.currentUser.get();
+
+    var isAuthorized = user.hasGrantedScopes(SCOPE);
+
+    if (isAuthorized) {
+
+      $('#sign-in-or-out-button').html('Sign out');
+
+      $('#revoke-access-button').css('display', 'inline-block');
+
+      document.getElementById("auth-status").classList.remove("alert-warning")
+
+      document.getElementById("auth-status").classList.add("alert-info")
+
+      $('#auth-status').html('You are currently signed in');
+
+          listMajors()
+
+    } else {
+
+      $('#sign-in-or-out-button').html('Sign In/Authorize');
+
+      $('#revoke-access-button').css('display', 'none');
+
+      document.getElementById("auth-status").classList.remove("alert-info")
+
+      document.getElementById("auth-status").classList.add("alert-warning")
+
+      $('#auth-status').html('Authorize this app or sign in to view data');
+
+    }
+
+  }
+
+  function updateSigninStatus() {
+
+    setSigninStatus();
+
+  }
+
+      async function listMajors() {
+
+        let response;
+
+        try {
+
+          // Fetch first 10 files
+
+          response = await gapi.client.sheets.spreadsheets.values.get({
+
+            spreadsheetId: '1sALcpbToGO9ELBvDsEsSbHmnxu2lpwOZAvu1AGypS4A',
+
+            range: 'Sheet1!A2:E26',
+
+          });
+
+        } catch (err) {
+
+          document.getElementById('content').innerText = err.message;
+
+          return;
+
+        }
+
+        const range = response.result
+
+        console.log(range)
+
+        if (!range || !range.values || range.values.length == 0) {
+
+          document.getElementById('content').innerText = 'No values found.';
+
+          return;
+
+        }
+
+        let accordion = document.getElementById("accordion")
+
+        range.values.forEach((item,ind) => {
+
+          let accordingJr = document.createElement("div")
+
+          accordingJr.classList.add("accordion-item");
+
+          accordingJr.innerHTML = `
+
+            
+
+    <h2 class="accordion-header" id="heading${ind}">
+
+      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${ind}" aria-expanded="true" aria-controls="collapse${ind}">
+
+        ${item[0]}
+
+      </button>
+
+    </h2>
+
+    <div id="collapse${ind}" class="accordion-collapse collapse" aria-labelledby="heading${ind}" data-bs-parent="#accordion">
+
+      <div class="accordion-body">
+
+<div class="progress mb-3 ml-4">
+
+  <div class="progress-bar" style="width:${item[4]};" role="progressbar" aria-label="Basic example" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">${item[4]}</div>
+
+</div>
+
+<div class="input-group mb-2">
+
+  <span class="input-group-text" id="inputGroup-total-${ind}">Needed</span>
+
+  <input type="text" disabled value="${item[1]}" class="form-control" aria-label="Total Amount ${ind}" aria-describedby="inputGroup-total-${ind}">
+
+</div>
+
+<div class="input-group mb-2">
+
+  <span class="input-group-text" id="inputGroup-got-${ind}">Have</span>
+
+  <input type="text" disabled value="${item[2]}" class="form-control" aria-label="Total Amount We Have ${ind}" aria-describedby="inputGroup-got-${ind}">
+
+</div>
+
+<div class="input-group mb-2">
+
+  <span class="input-group-text" id="inputGroup-remaining-${ind}">Remaining</span>
+
+  <input type="text" disabled value="${item[3]}" class="form-control" aria-label="Total Remaining Amount ${ind}" aria-describedby="inputGroup-remaining-${ind}">
+
+</div>
+
+      </div>
+
+    </div>
+
+  
+
+          `;
+
+          accordion.appendChild(accordingJr)
+
+        })
+
+        
+
+      }
+
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.5/dist/umd/popper.min.js" integrity="sha384-Xe+8cL9oJa6tN/veChSP7q+mnSPaj5Bcu9mPX5F5xIGE0DVittaqT5lorf0EI7Vk" crossorigin="anonymous"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.min.js" integrity="sha384-ODmDIVzN+pFdexxHEHFBQH3/9/vQ9uori45z4JjnFsRydbmQbmL5t1tQ0culUzyK" crossorigin="anonymous"></script>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<script async defer src="https://apis.google.com/js/api.js"
+
+        onload="this.onload=function(){};handleClientLoad()"
+
+        onreadystatechange="if (this.readyState === 'complete') this.onload()">
+
+</script>    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+
+  </body>
+
+</html>
+
